@@ -24,6 +24,12 @@ struct TodayView: View {
             Section("Rules") {
                 LabeledContent("1 min reading earns", value: "\(policy.ratio) min")
                 LabeledContent("Daily cap", value: "\(policy.dailyCap) min")
+                if let pending = state.settings.pending {
+                    Label("From tomorrow: \(pending.ratio) min per min, cap \(pending.dailyCap) min\(pending.enforced ? "" : ", unlocked")",
+                          systemImage: "clock")
+                        .foregroundStyle(.orange)
+                }
+                NavigationLink("Change rules") { SettingsView() }
             }
             if let error = model.monitoringError {
                 Text(error).foregroundStyle(.red)
