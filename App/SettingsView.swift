@@ -7,8 +7,13 @@ struct SettingsView: View {
     @State private var ratio = RewardPolicy.default.ratio
     @State private var cap = RewardPolicy.default.dailyCap
     @State private var enforced = true
+    @State private var emergencyUnlocks = RewardPolicy.default.emergencyUnlocks
+    @State private var emergencyMinutes = RewardPolicy.default.emergencyMinutes
 
-    private var draft: RewardPolicy { RewardPolicy(ratio: ratio, dailyCap: cap, enforced: enforced) }
+    private var draft: RewardPolicy {
+        RewardPolicy(ratio: ratio, dailyCap: cap, enforced: enforced,
+                     emergencyUnlocks: emergencyUnlocks, emergencyMinutes: emergencyMinutes)
+    }
 
     var body: some View {
         Form {
@@ -16,8 +21,12 @@ struct SettingsView: View {
                 Stepper("1 min reading = \(ratio) min Instagram", value: $ratio, in: RewardPolicy.ratioRange)
                 Stepper("Daily cap: \(cap) min", value: $cap, in: RewardPolicy.capRange, step: 5)
                 Toggle("Lock Instagram", isOn: $enforced)
+                Stepper("Emergency unlocks: \(emergencyUnlocks) a day", value: $emergencyUnlocks,
+                        in: RewardPolicy.emergencyUnlocksRange)
+                Stepper("Each unlock: \(emergencyMinutes) min", value: $emergencyMinutes,
+                        in: RewardPolicy.emergencyMinutesRange)
             } footer: {
-                Text("Stricter changes apply now. Looser changes (higher ratio, higher cap, unlocking) start tomorrow.")
+                Text("Stricter changes apply now. Looser changes (higher ratio, higher cap, more or longer emergency unlocks, unlocking) start tomorrow.")
             }
             Section {
                 Button("Save") {
@@ -33,6 +42,8 @@ struct SettingsView: View {
             ratio = requested.ratio
             cap = requested.dailyCap
             enforced = requested.enforced
+            emergencyUnlocks = requested.emergencyUnlocks
+            emergencyMinutes = requested.emergencyMinutes
         }
     }
 }

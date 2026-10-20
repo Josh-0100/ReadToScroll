@@ -16,7 +16,9 @@ public struct SettingsState: Codable, Equatable, Sendable {
         let now = RewardPolicy(
             ratio: min(active.ratio, desired.ratio),
             dailyCap: min(active.dailyCap, desired.dailyCap),
-            enforced: active.enforced || desired.enforced
+            enforced: active.enforced || desired.enforced,
+            emergencyUnlocks: min(active.emergencyUnlocks, desired.emergencyUnlocks),
+            emergencyMinutes: min(active.emergencyMinutes, desired.emergencyMinutes)
         )
         active = now
         pending = desired == now ? nil : desired

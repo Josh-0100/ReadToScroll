@@ -1644,3 +1644,13 @@ Expected: all pass.
 ```bash
 git add -A && git commit -m "chore: verify daily rollover on device"
 ```
+
+---
+
+### Task 10: Emergency unlock (added 2026-10-20, design approved in chat)
+
+Approved design: an in-app "Emergency unlock" button with a confirmation step. It unlocks Instagram for `emergencyMinutes` of actual use (default 5, range 1–15), at most `emergencyUnlocks` per day (default 2, range 0–5). Emergency minutes don't consume earned balance. A separate one-shot DeviceActivity window (15 min minimum, imposed by iOS) with per-minute `emergency.N` events re-locks when the allowance is used up or the window ends. The settings follow the same tighten-now/loosen-tomorrow rule. Unlocks reset at midnight and are logged.
+
+- RewardCore: `RewardPolicy.emergencyUnlocks/emergencyMinutes` (+ legacy JSON decode defaults); `EventName.Kind.emergency`; `EventPlan.emergencyEvents()`; ledger `emergenciesUsed/emergencyMinutesUsed` + `activeEmergency`; `AppState.startEmergency()/cancelEmergency()/endEmergency()`, `emergenciesLeft`, emergency minutes excluded from spent; shield copy mentions unlocks left.
+- Shared: `Monitoring.startEmergency(spend:)`; Monitor handles `.emergency` activity start/end.
+- App: Emergency section on Today (button + confirmationDialog, active-session status); two steppers in Settings.

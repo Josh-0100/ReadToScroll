@@ -67,5 +67,19 @@ final class AppModel: ObservableObject {
         Shielding.apply(state, spend: store.spendSelection)
     }
 
+    func startEmergency() {
+        var started = false
+        state = store.update { started = $0.startEmergency() }
+        guard started else { return }
+        do {
+            try Monitoring.startEmergency(spend: store.spendSelection)
+            store.log("emergency unlock started (\(state.emergenciesLeft) left today)")
+        } catch {
+            state = store.update { $0.cancelEmergency() }
+            monitoringError = "Couldn't start emergency unlock: \(error.localizedDescription)"
+        }
+        Shielding.apply(state, spend: store.spendSelection)
+    }
+
     var eventLog: [String] { store.eventLog.entries.reversed() }
 }

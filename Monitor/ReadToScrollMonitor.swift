@@ -6,9 +6,23 @@ final class ReadToScrollMonitor: DeviceActivityMonitor {
 
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
+        if activity == .emergency {
+            let state = store.loadState()
+            store.log("emergency window started")
+            Shielding.apply(state, spend: store.spendSelection)
+            return
+        }
         // loadState() inside update rolls over to today: resets ledger, applies queued settings.
         let state = store.update { _ in }
         store.log("new day \(state.ledger.day) ratio \(state.settings.active.ratio) cap \(state.settings.active.dailyCap)")
+        Shielding.apply(state, spend: store.spendSelection)
+    }
+
+    override func intervalDidEnd(for activity: DeviceActivityName) {
+        super.intervalDidEnd(for: activity)
+        guard activity == .emergency else { return }
+        let state = store.update { $0.endEmergency() }
+        store.log("emergency window ended → left \(state.remainingMinutes)")
         Shielding.apply(state, spend: store.spendSelection)
     }
 

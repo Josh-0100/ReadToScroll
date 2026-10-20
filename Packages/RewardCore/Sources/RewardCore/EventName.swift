@@ -1,6 +1,6 @@
-/// Name of a DeviceActivity threshold event, encoded as "read.5" or "spend.12".
+/// Name of a DeviceActivity threshold event, encoded as "read.5", "spend.12" or "emergency.3".
 public struct EventName: Hashable, Sendable {
-    public enum Kind: String, Sendable { case read, spend }
+    public enum Kind: String, Sendable { case read, spend, emergency }
 
     public let kind: Kind
     public let minutes: Int
@@ -34,5 +34,10 @@ public enum EventPlan {
         let minutes = Array(stride(from: step, through: maxMinutes, by: step))
         return minutes.map { EventName(kind: .read, minutes: $0) }
             + minutes.map { EventName(kind: .spend, minutes: $0) }
+    }
+
+    /// Per-minute events for an emergency window, covering the largest allowed unlock.
+    public static func emergencyEvents() -> [EventName] {
+        RewardPolicy.emergencyMinutesRange.map { EventName(kind: .emergency, minutes: $0) }
     }
 }
