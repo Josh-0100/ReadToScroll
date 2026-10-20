@@ -59,12 +59,12 @@ final class AppModel: ObservableObject {
         state = store.loadState()
         store.save(state)
         isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
-        if isAuthorized { Shielding.apply(state, spend: store.spendSelection) }
+        if isAuthorized { Shielding.apply(state, spend: store.spendSelection, reason: "app refresh") }
     }
 
     func requestPolicy(_ policy: RewardPolicy) {
         state = store.update { $0.settings.request(policy) }
-        Shielding.apply(state, spend: store.spendSelection)
+        Shielding.apply(state, spend: store.spendSelection, reason: "settings saved")
     }
 
     func startEmergency() {
@@ -78,7 +78,7 @@ final class AppModel: ObservableObject {
             state = store.update { $0.cancelEmergency() }
             monitoringError = "Couldn't start emergency unlock: \(error.localizedDescription)"
         }
-        Shielding.apply(state, spend: store.spendSelection)
+        Shielding.apply(state, spend: store.spendSelection, reason: "emergency start")
     }
 
     var eventLog: [String] { store.eventLog.entries.reversed() }
