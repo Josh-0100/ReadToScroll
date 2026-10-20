@@ -6,9 +6,7 @@ public struct ShieldCopy: Equatable, Sendable {
     public static func make(for state: AppState) -> ShieldCopy {
         let policy = state.settings.active
         let earnable = policy.dailyCap - state.earnedMinutes
-        let emergencyLine = state.emergenciesLeft > 0
-            ? "\nEmergency? \(state.emergenciesLeft) unlock\(state.emergenciesLeft == 1 ? "" : "s") left in the app."
-            : ""
+        let emergencyLine = "\nNeed messages? Emergency unlock in the app."
         if earnable <= 0 {
             return ShieldCopy(title: "Daily limit reached",
                               subtitle: "You've used all \(policy.dailyCap) min for today. Back tomorrow." + emergencyLine)

@@ -40,12 +40,10 @@ public struct AppState: Codable, Equatable, Sendable {
 
     // MARK: Emergency unlocks
 
-    public var emergenciesLeft: Int { max(0, settings.active.emergencyUnlocks - ledger.emergenciesUsed) }
-
-    /// Uses one unlock. Returns false when one is already active or none are left.
+    /// Starts an unlock (no daily limit). Returns false when one is already active.
     @discardableResult
     public mutating func startEmergency() -> Bool {
-        guard ledger.activeEmergency == nil, emergenciesLeft > 0 else { return false }
+        guard ledger.activeEmergency == nil else { return false }
         ledger.emergenciesUsed += 1
         ledger.activeEmergency = EmergencySession(minutesUsed: 0, allowance: settings.active.emergencyMinutes)
         return true
@@ -58,7 +56,7 @@ public struct AppState: Codable, Equatable, Sendable {
         ledger.activeEmergency = nil
     }
 
-    /// Undoes a start that couldn't be put into effect (refunds the unlock).
+    /// Undoes a start that couldn't be put into effect.
     public mutating func cancelEmergency() {
         guard ledger.activeEmergency != nil else { return }
         ledger.activeEmergency = nil

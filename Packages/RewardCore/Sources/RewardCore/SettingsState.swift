@@ -17,7 +17,6 @@ public struct SettingsState: Codable, Equatable, Sendable {
             ratio: min(active.ratio, desired.ratio),
             dailyCap: min(active.dailyCap, desired.dailyCap),
             enforced: active.enforced || desired.enforced,
-            emergencyUnlocks: min(active.emergencyUnlocks, desired.emergencyUnlocks),
             emergencyMinutes: min(active.emergencyMinutes, desired.emergencyMinutes)
         )
         active = now

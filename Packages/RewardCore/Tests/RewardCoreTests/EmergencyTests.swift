@@ -4,56 +4,62 @@ import XCTest
 final class EmergencyTests: XCTestCase {
     private let day = "2026-10-20"
 
-    func testDefaultsAreTwoUnlocksOfFiveMinutes() {
-        XCTAssertEqual(RewardPolicy.default.emergencyUnlocks, 2)
+    func testDefaultUnlockIsFiveMinutes() {
         XCTAssertEqual(RewardPolicy.default.emergencyMinutes, 5)
     }
 
-    func testEmergencySettingsAreClamped() {
-        let p = RewardPolicy(ratio: 3, dailyCap: 60, emergencyUnlocks: 9, emergencyMinutes: 0)
-        XCTAssertEqual(p.emergencyUnlocks, 5)
-        XCTAssertEqual(p.emergencyMinutes, 1)
+    func testEmergencyMinutesAreClamped() {
+        XCTAssertEqual(RewardPolicy(ratio: 3, dailyCap: 60, emergencyMinutes: 0).emergencyMinutes, 1)
+        XCTAssertEqual(RewardPolicy(ratio: 3, dailyCap: 60, emergencyMinutes: 99).emergencyMinutes, 15)
     }
 
     func testLegacyJSONWithoutEmergencyFieldsDecodesWithDefaults() throws {
         let json = #"{"settings":{"active":{"enforced":true,"dailyCap":60,"ratio":3}},"ledger":{"readMinutes":4,"day":"2026-10-20","spentMinutes":1}}"#
         let s = try JSONDecoder().decode(AppState.self, from: Data(json.utf8))
-        XCTAssertEqual(s.settings.active.emergencyUnlocks, 2)
+        XCTAssertEqual(s.settings.active.emergencyMinutes, 5)
         XCTAssertEqual(s.ledger.readMinutes, 4)
         XCTAssertEqual(s.ledger.emergenciesUsed, 0)
         XCTAssertNil(s.ledger.activeEmergency)
     }
 
-    func testFewerUnlocksApplyNowMoreAreQueued() {
+    func testJSONFromLimitedUnlockBuildStillDecodes() throws {
+        let json = #"{"settings":{"active":{"emergencyUnlocks":2,"ratio":3,"dailyCap":60,"enforced":true,"emergencyMinutes":5}},"ledger":{"spentMinutes":6,"emergenciesUsed":1,"emergencyMinutesUsed":0,"activeEmergency":{"allowance":5,"minutesUsed":0},"readMinutes":2,"day":"2026-10-20"}}"#
+        let s = try JSONDecoder().decode(AppState.self, from: Data(json.utf8))
+        XCTAssertEqual(s.ledger.activeEmergency, EmergencySession(minutesUsed: 0, allowance: 5))
+        XCTAssertFalse(s.shouldShield)
+    }
+
+    func testShorterUnlockAppliesNowLongerIsQueued() {
         var s = SettingsState()
-        s.request(RewardPolicy(ratio: 3, dailyCap: 60, emergencyUnlocks: 1, emergencyMinutes: 10))
-        XCTAssertEqual(s.active.emergencyUnlocks, 1)
-        XCTAssertEqual(s.active.emergencyMinutes, 5)
+        s.request(RewardPolicy(ratio: 3, dailyCap: 60, emergencyMinutes: 3))
+        XCTAssertEqual(s.active.emergencyMinutes, 3)
+        s.request(RewardPolicy(ratio: 3, dailyCap: 60, emergencyMinutes: 10))
+        XCTAssertEqual(s.active.emergencyMinutes, 3)
         XCTAssertEqual(s.pending?.emergencyMinutes, 10)
     }
 
-    func testStartingAnEmergencyUnshieldsAndUsesOneUnlock() {
+    func testStartingAnEmergencyUnshieldsAndCountsIt() {
         var s = AppState(day: day)
         XCTAssertTrue(s.startEmergency())
         XCTAssertFalse(s.shouldShield)
-        XCTAssertEqual(s.emergenciesLeft, 1)
+        XCTAssertEqual(s.ledger.emergenciesUsed, 1)
         XCTAssertEqual(s.ledger.activeEmergency, EmergencySession(minutesUsed: 0, allowance: 5))
     }
 
-    func testCannotStartWhileOneIsActiveOrNoneLeft() {
+    func testCannotStartWhileOneIsActive() {
         var s = AppState(day: day)
         XCTAssertTrue(s.startEmergency())
         XCTAssertFalse(s.startEmergency())
-        s.endEmergency()
-        XCTAssertTrue(s.startEmergency())
-        s.endEmergency()
-        XCTAssertFalse(s.startEmergency())
-        XCTAssertEqual(s.emergenciesLeft, 0)
+        XCTAssertEqual(s.ledger.emergenciesUsed, 1)
     }
 
-    func testZeroUnlocksSettingAllowsNone() {
-        var s = AppState(day: day, settings: SettingsState(active: RewardPolicy(ratio: 3, dailyCap: 60, emergencyUnlocks: 0)))
-        XCTAssertFalse(s.startEmergency())
+    func testNoDailyLimitOnUnlocks() {
+        var s = AppState(day: day)
+        for _ in 1...10 {
+            XCTAssertTrue(s.startEmergency())
+            s.endEmergency()
+        }
+        XCTAssertEqual(s.ledger.emergenciesUsed, 10)
     }
 
     func testReachingAllowanceEndsEmergencyAndReshields() {
@@ -92,20 +98,20 @@ final class EmergencyTests: XCTestCase {
         XCTAssertEqual(s.ledger.emergencyMinutesUsed, 0)
     }
 
-    func testCancelRefundsTheUnlock() {
+    func testCancelUndoesTheStart() {
         var s = AppState(day: day)
         s.startEmergency()
         s.cancelEmergency()
-        XCTAssertEqual(s.emergenciesLeft, 2)
+        XCTAssertEqual(s.ledger.emergenciesUsed, 0)
         XCTAssertNil(s.ledger.activeEmergency)
         XCTAssertTrue(s.shouldShield)
     }
 
-    func testNewDayResetsUnlocks() {
+    func testNewDayClearsActiveUnlockAndCount() {
         var s = AppState(day: day)
         s.startEmergency()
         s.advance(to: "2026-10-21")
-        XCTAssertEqual(s.emergenciesLeft, 2)
+        XCTAssertEqual(s.ledger.emergenciesUsed, 0)
         XCTAssertNil(s.ledger.activeEmergency)
     }
 
@@ -115,14 +121,8 @@ final class EmergencyTests: XCTestCase {
         XCTAssertFalse(EventPlan.events().contains { $0.kind == .emergency })
     }
 
-    func testShieldCopyMentionsUnlocksLeft() {
-        let s = AppState(day: day)
-        XCTAssertEqual(ShieldCopy.make(for: s).subtitle,
-                       "Read 1 min in Apple Books to earn 3 min.\nEmergency? 2 unlocks left in the app.")
-    }
-
-    func testShieldCopyOmitsEmergencyLineWhenNoneLeft() {
-        let s = AppState(day: day, settings: SettingsState(active: RewardPolicy(ratio: 3, dailyCap: 60, emergencyUnlocks: 0)))
-        XCTAssertEqual(ShieldCopy.make(for: s).subtitle, "Read 1 min in Apple Books to earn 3 min.")
+    func testShieldCopyPointsToEmergencyUnlock() {
+        XCTAssertEqual(ShieldCopy.make(for: AppState(day: day)).subtitle,
+                       "Read 1 min in Apple Books to earn 3 min.\nNeed messages? Emergency unlock in the app.")
     }
 }

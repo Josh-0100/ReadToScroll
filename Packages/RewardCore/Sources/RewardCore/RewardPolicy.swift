@@ -2,7 +2,6 @@
 public struct RewardPolicy: Codable, Equatable, Sendable {
     public static let ratioRange = 1...10
     public static let capRange = 10...120
-    public static let emergencyUnlocksRange = 0...5
     public static let emergencyMinutesRange = 1...15
     public static let `default` = RewardPolicy(ratio: 3, dailyCap: 60, enforced: true)
 
@@ -12,17 +11,13 @@ public struct RewardPolicy: Codable, Equatable, Sendable {
     public let dailyCap: Int
     /// When false, Instagram is never shielded.
     public let enforced: Bool
-    /// Emergency unlocks allowed per day.
-    public let emergencyUnlocks: Int
     /// Minutes of Instagram use each emergency unlock grants.
     public let emergencyMinutes: Int
 
-    public init(ratio: Int, dailyCap: Int, enforced: Bool = true,
-                emergencyUnlocks: Int = 2, emergencyMinutes: Int = 5) {
+    public init(ratio: Int, dailyCap: Int, enforced: Bool = true, emergencyMinutes: Int = 5) {
         self.ratio = Self.clamp(ratio, Self.ratioRange)
         self.dailyCap = Self.clamp(dailyCap, Self.capRange)
         self.enforced = enforced
-        self.emergencyUnlocks = Self.clamp(emergencyUnlocks, Self.emergencyUnlocksRange)
         self.emergencyMinutes = Self.clamp(emergencyMinutes, Self.emergencyMinutesRange)
     }
 
@@ -33,7 +28,6 @@ public struct RewardPolicy: Codable, Equatable, Sendable {
             ratio: try c.decode(Int.self, forKey: .ratio),
             dailyCap: try c.decode(Int.self, forKey: .dailyCap),
             enforced: try c.decode(Bool.self, forKey: .enforced),
-            emergencyUnlocks: try c.decodeIfPresent(Int.self, forKey: .emergencyUnlocks) ?? 2,
             emergencyMinutes: try c.decodeIfPresent(Int.self, forKey: .emergencyMinutes) ?? 5
         )
     }

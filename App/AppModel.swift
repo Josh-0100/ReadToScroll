@@ -73,7 +73,7 @@ final class AppModel: ObservableObject {
         guard started else { return }
         do {
             try Monitoring.startEmergency(spend: store.spendSelection)
-            store.log("emergency unlock started (\(state.emergenciesLeft) left today)")
+            store.log("emergency unlock #\(state.ledger.emergenciesUsed) started")
         } catch {
             state = store.update { $0.cancelEmergency() }
             monitoringError = "Couldn't start emergency unlock: \(error.localizedDescription)"

@@ -26,7 +26,7 @@ struct TodayView: View {
                 LabeledContent("1 min reading earns", value: "\(policy.ratio) min")
                 LabeledContent("Daily cap", value: "\(policy.dailyCap) min")
                 if let pending = state.settings.pending {
-                    Label("From tomorrow: \(pending.ratio) min per min, cap \(pending.dailyCap) min, \(pending.emergencyUnlocks)× \(pending.emergencyMinutes) min emergency\(pending.enforced ? "" : ", unlocked")",
+                    Label("From tomorrow: \(pending.ratio) min per min, cap \(pending.dailyCap) min, \(pending.emergencyMinutes) min emergency unlocks\(pending.enforced ? "" : ", unlocked")",
                           systemImage: "clock")
                         .foregroundStyle(.orange)
                 }
@@ -38,10 +38,13 @@ struct TodayView: View {
                           systemImage: "lock.open")
                         .foregroundStyle(.red)
                 } else {
-                    Button("Emergency unlock (\(state.emergenciesLeft) left today)", role: .destructive) {
+                    Button("Emergency unlock", role: .destructive) {
                         confirmingEmergency = true
                     }
-                    .disabled(state.emergenciesLeft == 0 || !state.shouldShield)
+                    .disabled(!state.shouldShield)
+                    if state.ledger.emergenciesUsed > 0 {
+                        LabeledContent("Used today", value: "\(state.ledger.emergenciesUsed)")
+                    }
                 }
             }
             if let error = model.monitoringError {
@@ -49,7 +52,7 @@ struct TodayView: View {
             }
         }
         .confirmationDialog(
-            "Use 1 of \(state.emergenciesLeft) emergency unlocks today?",
+            "Unlock Instagram for \(policy.emergencyMinutes) min?",
             isPresented: $confirmingEmergency,
             titleVisibility: .visible
         ) {
